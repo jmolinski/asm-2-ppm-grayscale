@@ -1,3 +1,6 @@
+#ifndef PPM_H
+#define PPM_H
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,3 +41,5 @@ int ppm_alloc(image_t* image);
  * Returns 0 on success and -1 on error (for details see errno variable).
  */
 int ppm_free(image_t* image);
+
+#endif
