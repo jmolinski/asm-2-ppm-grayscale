@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct {
+typedef struct __attribute__ ((packed)) {
     uint32_t r;
     uint32_t g;
     uint32_t b;

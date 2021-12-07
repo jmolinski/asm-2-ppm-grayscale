@@ -6,19 +6,9 @@
 
 #include "ppm/ppm.h"
 
-uint32_t R, G, B;
+extern uint32_t R, G, B;
 
-void to_grayscale(uint32_t *matrix, uint32_t rows, uint32_t columns) {
-    uint32_t cells = 3 * rows * columns;
-
-    for (uint32_t i = 0; i < cells; i += 3) {
-        uint32_t r = matrix[i];
-        uint32_t g = matrix[i + 1];
-        uint32_t b = matrix[i + 2];
-        uint32_t grayscale = (r * R + g * G + b * B) >> 8;
-        matrix[i] = grayscale;
-    }
-}
+extern void to_grayscale(uint32_t *matrix, uint32_t rows, uint32_t columns);
 
 void print_usage(const char *executable_name) {
     fprintf(stderr, "Usage: %s filename [r g b] \n", executable_name);
@@ -149,7 +139,7 @@ void write_pgm_image(const char *filepath, image_t *image) {
 
     result = fclose(output_file);
     if (result < 0) {
-        fprintf(stderr,"%s", strerror(errno));
+        fprintf(stderr, "%s", strerror(errno));
         exit(1);
     }
 }
@@ -160,8 +150,9 @@ int main(int argc, char *argv[]) {
 
     image_t image;
     read_ppm_image(input_filename, &image);
-
-    to_grayscale((uint32_t *) image.pixels, image.height, image.width);
+    if (image.width * image.height > 0) {
+        to_grayscale((uint32_t *) image.pixels, image.height, image.width);
+    }
 
     char *output_file_path = get_output_path(input_filename);
     write_pgm_image(output_file_path, &image);
