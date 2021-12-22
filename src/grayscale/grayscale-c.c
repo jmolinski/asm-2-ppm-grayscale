@@ -117,7 +117,7 @@ void read_ppm_image(const char *filepath, image_t *image) {
 void write_pgm_image(const char *filepath, image_t *image) {
     FILE *output_file = fopen(filepath, "w");
 
-    int maxval = 256;
+    const int maxval = 255;
 
     int result = fprintf(output_file, "P2\n%d %d\n%d\n", image->width, image->height, maxval);
     if (result < 0) {

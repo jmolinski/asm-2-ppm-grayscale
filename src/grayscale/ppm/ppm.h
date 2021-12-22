@@ -1,3 +1,11 @@
+/** 
+ * Krzysztof Kowalczyk jest autorem tego pliku. Plik znaleziony w internecie. Za zgodą.
+ * https://github.com/kowaalczyk/assembly-programming/blob/main/arm/src/assignment3/ppm.h
+ */
+
+/// A simple PPM i/o library.
+/// (c) Krzysztof Kowalczyk 2020 kk385830@students.mimuw.edu.pl
+
 #ifndef PPM_H
 #define PPM_H
 
@@ -5,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct __attribute__ ((packed)) {
+typedef struct {
     uint32_t r;
     uint32_t g;
     uint32_t b;

@@ -1,3 +1,11 @@
+/** 
+ * Krzysztof Kowalczyk jest autorem tego pliku. Plik znaleziony w internecie. Za zgodą. Lekko zmodyfikowany.
+ * https://github.com/kowaalczyk/assembly-programming/blob/main/arm/src/assignment3/ppm.c
+ */
+
+/// Implementation of the PPM i/o library.
+/// (c) Krzysztof Kowalczyk 2020 kk385830@students.mimuw.edu.pl
+
 #include <ctype.h>
 #include <errno.h>
 
@@ -19,6 +27,20 @@ static int parse_next_int(FILE* file, char* buffer)
 
     buffer_pos = 0;
     while ((raw_char = getc(file)) != EOF && buffer_pos < BUFFER_LEN - 1) {
+        /* Added to file to account for comments in P3 */ 
+        if (raw_char == '#') { 
+            if (buffer_pos == 0) {
+                while (raw_char = getc(file) != '\n') {
+                    if (raw_char == EOF) break;
+                };
+                continue;
+            }
+            else { 
+                break;
+            }
+        }
+        /* End of change */ 
+
         if (isspace(raw_char)) {
             if (buffer_pos == 0) continue; // nothing read yet
             break; // first whitespace after int
