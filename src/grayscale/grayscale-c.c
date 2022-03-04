@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,158 +7,104 @@
 
 #include "ppm/ppm.h"
 
-extern uint32_t R, G, B;
+extern void grayscale(uint32_t *matrix, uint32_t rows, uint32_t columns);
 
-extern void to_grayscale(uint32_t *matrix, uint32_t rows, uint32_t columns);
+extern uint32_t R_, G_, B_;
 
-void print_usage(const char *executable_name) {
-    fprintf(stderr, "Usage: %s filename [r g b] \n", executable_name);
-    fprintf(stderr, " - use r g b options to specify color coefficients\n");
-    fprintf(stderr, " - r + g + b must be equal 256\n");
-    fprintf(stderr, " - filename must point to a valid PPM file\n\n");
-    fprintf(stderr, "Example: %s image.ppm 64 64 128\n\n", executable_name);
-    exit(2);
+/* Checks whether a file path ends with .ppm extension */
+bool ends_with_ppm(char *path) {
+    size_t s = strlen(path);
+    if (s < 4) return false;
+
+    char* ppm = ".ppm";
+
+    for (int i = 1; i <= 4; i++) 
+        if (ppm[4 - i] != path[s - i]) return false;
+
+    return true;
 }
 
-// Changes or adds .pgm extension to filepath
-char *get_output_path(const char *input_path) {
-    size_t input_path_len = strlen(input_path);
-
-    char *output_path = calloc(input_path_len + 5, sizeof(char));
-    if (output_path == NULL) {
-        fprintf(stderr, "%s", strerror(errno));
-        exit(1);
-    }
-
-    memcpy(output_path, input_path, input_path_len + 1);
-
-    size_t last_dot_idx = input_path_len + 1;
-    while (1) {
-        char c = output_path[last_dot_idx];
-
-        if (last_dot_idx == 0 || c == '/') {
-            last_dot_idx = input_path_len + 1;
-            output_path[last_dot_idx] = '.';
-        }
-        if (c == '.') {
-            break;
-        }
-        last_dot_idx--;
-    }
-
-    output_path[last_dot_idx + 1] = 'p';
-    output_path[last_dot_idx + 2] = 'g';
-    output_path[last_dot_idx + 3] = 'm';
-    output_path[last_dot_idx + 4] = '\0';
-
-    return output_path;
-}
-
-uint32_t parse_color_parameter(const char *executable_name, const char *s) {
-    if (s == NULL) {
-        print_usage(executable_name);
-        exit(1);
-    }
-
-    uint32_t v = 0;
-    unsigned long len = strlen(s);
-    for (unsigned long i = 0; i < len; i++) {
-        if (s[i] > '9' || s[i] < '0') {
-            print_usage(executable_name);
-            exit(1);
-        }
-        v = v * 10 + s[i] - '0';
-        if (v > 256) {
-            print_usage(executable_name);
-            exit(1);
-        }
-    }
-
-    return v;
-}
-
-void parse_and_validate_color_arguments(int argc, char *argv[]) {
+/* Validates input. If necessary overwrites R_, G_, B_ coefficients */
+void validate_input(int argc, char *argv[])
+{
     if (argc == 2) {
-        R = 77;
-        G = 151;
-        B = 28;
-    } else if (argc == 5) {
-        R = parse_color_parameter(argv[0], argv[2]);
-        G = parse_color_parameter(argv[0], argv[3]);
-        B = parse_color_parameter(argv[0], argv[4]);
-        if (R + G + B != 256) {
-            print_usage(argv[0]);
-            exit(1);
+        R_ = 77;
+        G_ = 151;
+        B_ = 28;
+    }
+    else if (argc == 5) {
+        R_ = atoi(argv[2]);
+        G_ = atoi(argv[3]);
+        B_ = atoi(argv[4]);
+    }
+    else {
+        printf("Invalid usage. Correct usage is ./grayscale 'image'\n");
+        exit(1);
+    }
+
+    if (!ends_with_ppm(argv[1])) {
+        printf("Invalid usage. Image path should end with '.ppm'\n");
+        exit(1);
+    }
+    
+}
+
+/* Creates path to .pgm file based on path to a .ppm file */
+char *create_pgm(char *ppm)
+{
+    size_t s = strlen(ppm);
+
+    char *pgm = malloc(sizeof(char) * s);
+    strcpy(pgm, ppm);
+
+    /* Change .ppm to .pgm */
+    pgm[s - 2] = 'g';
+    return pgm;
+}
+
+/** 
+ * This function is based on ppm_write but instead of printing RGB values it prints only one (R)
+ */
+int pgm_write(FILE *file, image_t *image)
+{
+    int tmp = fprintf(file, "P2\n%d %d\n%d\n", image->width, image->height, 255);
+
+    if (tmp < 0)
+        return tmp;
+
+    for (int row = 0; row < image->height; row++) {
+        for (int col = 0; col < image->width; col++) {
+            pixel_t p = image->pixels[row * image->width + col];
+
+            if (col == image->width - 1) 
+                tmp = fprintf(file, "%d\n", p.r);
+            else 
+                tmp = fprintf(file, "%d ", p.r);
+
+            if (tmp < 0) 
+                return tmp;
         }
-    } else {
-        print_usage(argv[0]);
-        exit(1);
     }
+
+    return 0;
 }
 
-void read_ppm_image(const char *filepath, image_t *image) {
-    FILE *input_file = fopen(filepath, "r");
-    if (input_file == NULL) {
-        fprintf(stderr, "%s", strerror(errno));
-        exit(1);
-    }
-
-    int result = ppm_read(input_file, image);
-    if (result < 0) {
-        fprintf(stderr, "Invalid PPM read");
-        exit(1);
-    }
-    result = fclose(input_file);
-    if (result < 0) {
-        fprintf(stderr, "%s", strerror(errno));
-        exit(1);
-    }
-}
-
-void write_pgm_image(const char *filepath, image_t *image) {
-    FILE *output_file = fopen(filepath, "w");
-
-    const int maxval = 255;
-
-    int result = fprintf(output_file, "P2\n%d %d\n%d\n", image->width, image->height, maxval);
-    if (result < 0) {
-        fprintf(stderr, "Invalid PGM write");
-        exit(1);
-    }
-
-    for (uint32_t r = 0; r < image->height; r++) {
-        for (uint32_t i = 0; i < image->width; i++) {
-            uint32_t val = image->pixels[r * image->width + i].r;
-            char last_char = (i < image->width - 1) ? ' ' : '\n';
-            int ret = fprintf(output_file, "%d%c", val, last_char);
-            if (ret < 0) {
-                fprintf(stderr, "Invalid PGM write");
-                exit(1);
-            }
-        }
-    }
-
-    result = fclose(output_file);
-    if (result < 0) {
-        fprintf(stderr, "%s", strerror(errno));
-        exit(1);
-    }
-}
-
-int main(int argc, char *argv[]) {
-    parse_and_validate_color_arguments(argc, argv);
-    char *input_filename = argv[1];
-
+int main(int argc, char *argv[])
+{
     image_t image;
-    read_ppm_image(input_filename, &image);
-    if (image.width * image.height > 0) {
-        to_grayscale((uint32_t *) image.pixels, image.height, image.width);
-    }
+    validate_input(argc, argv);
+    char *ppm_image_path = argv[1];
+    FILE *ppm_file = fopen(ppm_image_path, "r");
+    ppm_read(ppm_file, &image);
 
-    char *output_file_path = get_output_path(input_filename);
-    write_pgm_image(output_file_path, &image);
+    grayscale((uint32_t *)image.pixels, image.height, image.width);
+    printf("Values:\nR = %d\nG = %d\nB = %d\n", R_, G_, B_);
 
-    free(output_file_path);
+    char *pgm_image_path = create_pgm(ppm_image_path);
+    FILE *pgm_file = fopen(pgm_image_path, "w");
+    pgm_write(pgm_file, &image);
+    
     ppm_free(&image);
+    free(pgm_image_path);
     return 0;
 }

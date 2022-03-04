@@ -1,67 +1,80 @@
-.data
-R:  .word 0
-.balign 4
-G:  .word 0
-.balign 4
-B:  .word 0
-.balign 4
+.data 
+    R_: .word 0
+    .balign 4
+    G_: .word 0
+    .balign 4
+    B_: .word 0
+    .balign 4
 
-.global R, G, B
+.global R_, G_, B_, grayscale
 
 .text
 
-.global to_grayscale
+grayscale:
+    @ arguments
+    @ r0 - matrix pointer
+    @ r1 - number of rows
+    @ r2 - number of columns
 
-to_grayscale:
-    @ arguments:
-    @ r0 - pointer to 1d array of 3*rows*columns ints {RGB}
-    @ r1 - rows number
-    @ r2 - columns number
+    str lr, [sp, #-4]!
+    stmdb sp!, {r4-r8}
 
-    @prologue
-    str lr, [sp,#-4]!   @ store lr on the stack (decreasing sp by 4 bytes before load)
-    stmdb sp!, {r4-r8}  @ preserve registers on the stack
+prepare_limits: 
+    @ r1 - number of cells (rows * columns)
+    mul r3, r1, r2
+    mov r1, r3
 
-    mul r3, r1, r2      @ r3 = number of pixels to process (controlling the loop)
-    mov r2, #3
-    mul r1, r2, r3
-    @ r0: uint[], r1: number of pixels * 3
+prepare_constants: 
+    @ Red
+    ldr r4, =R_
+    ldr r6, [r4]
 
-    @ if cells = 0, goto epilogue
-    subs r2, r1, #0
-    beq .finish
+    @ Green
+    ldr r4, =G_
+    ldr r7, [r4]
 
-    @ load R, G, B coefficients from memory
-    ldr r2, =R
-    ldr r6, [r2]
-    ldr r2, =G
-    ldr r7, [r2]
-    ldr r2, =B
-    ldr r8, [r2]
+    @ Blue
+    ldr r4, =B_
+    ldr r8, [r4]
 
-    mov	r2, #0	@ i
-    @ r0: uint32_t[] matrix, r1: number of pixels * 3, r2: i, r6: R, r7: G, r8: B
-.loop:
-    ldr	r3, [r0, #0]    @ load pixel's red value
-    mul	r4, r3, r6	    @ r4 = red * R
+for_loop: 
+    @ r0 - matrix pointer (at cell)
+    @ r1 - number of cells (from 0)
+    @ r6 - red
+    @ r7 - green
+    @ r8 - blue
+    
+    mov r5, #0
 
-    ldr	r3, [r0, #4]    @ load pixel's green value
-    mla r5, r3, r7, r4  @ r5 = red * R + green * G
+    @ Red
+    ldr r2, [r0, #0]
+    mla r5, r2, r6, r5
 
-    ldr	r3, [r0, #8]    @ load pixel's blue value
-    mla r4, r3, r8, r5 @ r4 = red * R + green * G + blue * B
+    @ Green
+    ldr r3, [r0, #4]
+    mla r5, r3, r7, r5
 
-    mov r4, r4, lsr #8  @ r4 = (red * R + green * G + blue * B) // 256 = grayscale
+    @ Blue
+    ldr r4, [r0, #8]
+    mla r5, r4, r8, r5
 
-    str r4, [r0]        @ save grayscale value to matrix - only overwrite red, other fields should be discarded
+    @ Shift right by 8 - divide by 256
+    lsr r5, #8
+
+    str r5, [r0, #0]
+    str r5, [r0, #4]
+    str r5, [r0, #8]
+
+    @ Move pointer to next cell
     add r0, #12
+    @ Update iterator
+    sub r1, #1
 
-    add	r2, r2, #3	    @ i += 3
-    cmp	r1, r2	        @ if i < cells then loop
-    bhi	.loop
+    @ Check if there are cells to update
+    cmp r1, #0 
+    bne for_loop
 
-.finish:
-    @ epilogue
-    ldmia sp!, {r4-r8} @ restore preserved registers from the stack
-    ldr lr, [sp], #4 @ load return address from the stack & reset stack
-    bx lr @ jump to return address
+at_end:
+    ldmia sp!, {r4 - r8} 
+    ldr lr, [sp], #4
+    bx lr
