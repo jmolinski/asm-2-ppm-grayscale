@@ -1,22 +1,3 @@
-Po rozpakowaniu zipa drzewko powinno wyglądać tak:
-
-asm2
-├── README.md
-├── add_to_ssh_cfg.sh
-├── download_deps.sh
-├── download_vm.sh
-├── enable_unsafe.sh
-├── run_fswatch.sh
-├── run_vm.sh
-└── src
-    ├── grayscale
-    │   ├── TUTAJ DUZO PLIKOW
-    ├── examples
-    │   ├── TUTAJ DUZO PLIKOW
-    └── hello.c
-
-
------------------------------------------------------
 
 SETUP 
 
